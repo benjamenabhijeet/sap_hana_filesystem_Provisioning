@@ -24,7 +24,8 @@ Copy the public key to all managed nodes:
 
 ssh-copy-id root@hana1
 ssh-copy-id root@hana2
-📁 2. Create Your Inventory File
+
+## 📁2. Create Your Inventory File
 Example: inventory.ini
 cat /etc/ansible/hosts
 
@@ -36,7 +37,7 @@ hana2  ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa
 📚 3. Install Required Ansible Collections
 
 ansible-galaxy collection install community.general
-💽 4. Attach Virtual Disks to the VMs
+## 💽 4. Attach Virtual Disks to the VMs
 Ensure your target VMs have additional disks (e.g. via vSphere, KVM, or cloud provider). These should appear as:
 
 /dev/sdb
@@ -45,7 +46,7 @@ Ensure your target VMs have additional disks (e.g. via vSphere, KVM, or cloud pr
 Check with:
 lsblk
 
-🚧 What the Playbook Does
+## 🚧 What the Playbook Does
 Partitions each disk using GPT
 Creates LVM volume groups and logical volumes
 Formats each LV with xfs
@@ -58,5 +59,5 @@ Mounts them to appropriate SAP HANA directories:
 
 Updates /etc/fstab for persistent mounts
 
-▶️ How to Run
+## ▶️ How to Run
 ansible-playbook -i inventory.ini sap_hana_storage.yml
