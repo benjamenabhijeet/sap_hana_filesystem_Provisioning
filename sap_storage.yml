@@ -1,0 +1,89 @@
+---
+- name: Create SAP HANA storage layout
+  hosts: hana_nodes
+  become: true
+  vars:
+    ap_storage_dict:
+      hanadata:
+        name: 'hanadata'
+        directory: '/hana/data'
+        vg: 'hanadatavg'
+        lv: 'hanadatalv'
+        pv: ["/dev/sdd"]
+        numluns: '1'
+        stripesize: ''
+      hanalog:
+        name: 'hanalog'
+        directory: '/hana/log'
+        vg: 'hanalogvg'
+        lv: 'hanaloglv'
+        pv: ["/dev/sdc"]
+        numluns: '1'
+        stripesize: ''
+      hanashared:
+        name: 'hanashared'
+        directory: '/hana/shared'
+        vg: 'hanasharedvg'
+        lv: 'hanasharedlv'
+        pv: ["/dev/sdb"]
+        numluns: '1'
+        stripesize: ''
+      usrsap:
+        name: 'usrsap'
+        directory: '/usr/sap'
+        vg: 'usrsapvg'
+        lv: 'usrsaplv'
+        pv: ["/dev/sdf"]
+        numluns: '1'
+        stripesize: ''
+
+  tasks:
+    - name: Install LVM tools
+      ansible.builtin.yum:
+        name: lvm2
+        state: present
+
+    - name: Create physical volumes
+      ansible.builtin.command:
+        cmd: pvcreate {{ item.value.pv | join(' ') }}
+        creates: "/dev/{{ item.value.pv[0] }}"
+      loop: "{{ ap_storage_dict | dict2items }}"
+
+    - name: Create volume groups
+      community.general.lvg:
+        vg: "{{ item.value.vg }}"
+        pvs: "{{ item.value.pv }}"
+        state: present
+      loop: "{{ ap_storage_dict | dict2items }}"
+
+    - name: Create logical volumes
+      community.general.lvol:
+        vg: "{{ item.value.vg }}"
+        lv: "{{ item.value.lv }}"
+        size: 100%FREE
+        state: present
+      loop: "{{ ap_storage_dict | dict2items }}"
+
+    - name: Format logical volumes with XFS
+      ansible.builtin.filesystem:
+        fstype: xfs
+        dev: "/dev/{{ item.value.vg }}/{{ item.value.lv }}"
+      loop: "{{ ap_storage_dict | dict2items }}"
+
+    - name: Create mount point directories
+      ansible.builtin.file:
+        path: "{{ item.value.directory }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      loop: "{{ ap_storage_dict | dict2items }}"
+
+    - name: Mount logical volumes and add to fstab
+      ansible.builtin.mount:
+        path: "{{ item.value.directory }}"
+        src: "/dev/{{ item.value.vg }}/{{ item.value.lv }}"
+        fstype: xfs
+        opts: defaults
+        state: mounted
+      loop: "{{ ap_storage_dict | dict2items }}"
